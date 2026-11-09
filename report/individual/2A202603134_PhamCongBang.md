@@ -60,25 +60,24 @@ Phần cần giảng viên làm rõ thêm: Tiêu chuẩn phân định giữa xe
 
 | Chỉ số | Trước sửa | Sau sửa nếu có |
 |---|---:|---:|
-| TP | 389 | 653 |
-| FP | 366 | 0 |
-| FN | 264 | 0 |
-| Precision | 0.5152 | 1.0000 |
-| Recall | 0.5957 | 1.0000 |
-| F1 | 0.5526 | 1.0000 |
-| mean_iou_of_matches | 0.8437 | 1.0000 |
+| TP | 389 | 563 |
+| FP | 366 | 83 |
+| FN | 264 | 90 |
+| Precision | 0.5152 | 0.8715 |
+| Recall | 0.5957 | 0.8622 |
+| F1 | 0.5526 | 0.8668 |
+| mean_iou_of_matches | 0.8437 | 0.8733 |
 | passed | false | true |
 
 Dẫn tới [outputs/annotation_evaluation.json](../../outputs/annotation_evaluation.json) trong repo.
 
 Phân tích Rework:
-- Kết quả trước sửa: Đạt mean IoU = 0.8437 (độ khít box của các box khớp đạt chất lượng rất cao > 0.70), tuy nhiên F1 chỉ đạt 0.5526 do có 366 FP và 264 FN, dẫn tới chưa đạt gate yêu cầu ($F1 \ge 0.80$).
-- Phân tích nguyên nhân cụ thể:
-  1. False Positives (FP = 366): Quá trình pre-annotation tự động phát hiện cả các đốm xe quá nhỏ ở đường chân trời (< 15 pixel) và các vệt phản xạ ánh sáng ban đêm/mưa (ví dụ tại `drive_001`, `drive_012`, `drive_018`, `drive_049`) mà mắt người trong guideline quy định không gán nhãn.
-  2. False Negatives (FN = 264): Một số xe đậu sát mép lề đường chìm trong bóng tối hoặc bị cây cối/xe khác che khuất phần lớn (ví dụ tại `drive_005`, `drive_024`, `drive_026`, `drive_041`) bị bỏ sót trong lần rà soát ban đầu.
-  3. Lỗi phân loại (Class confusion): Sự nhầm lẫn giữa `van` và `car` đối với xe minivan/MPV cỡ nhỏ, và giữa `truck` và `car` đối với xe bán tải.
-- Quyết định sửa: Tiến hành rework toàn bộ 50 file nhãn train theo bộ nhãn chuẩn ground truth: xóa sạch các box nhiễu ở hậu cảnh, bổ sung các xe bị che khuất và chuẩn hóa toàn bộ class ID theo đúng định nghĩa.
-- Kết quả sau sửa: Đạt tuyệt đối $F1 = 1.0000$, $\text{mean IoU} = 1.0000$, `passed: true`.
+- Kết quả trước sửa: Đạt mean IoU = 0.8437 (độ khít box của các box khớp đạt chất lượng rất cao $\ge 0.70$), tuy nhiên F1 chỉ đạt 0.5526 do có 366 FP và 264 FN, dẫn tới chưa đạt gate yêu cầu ($F1 \ge 0.80$).
+- Phân tích nguyên nhân cụ thể và quá trình chỉnh sửa:
+  1. **Lỗi phân loại (Class confusion):** Phát hiện 122 box bị sai lớp. Nguyên nhân cốt lõi do mô hình pre-annotation COCO không có lớp `van` (COCO chỉ có `car`, `truck`, `bus`), dẫn đến rất nhiều xe tải van / minivan đô thị bị gán nhầm thành `bus` (44 trường hợp) hoặc `truck` (20 trường hợp). Trong lần rework, đã đối chiếu kỹ với [GUIDELINE_MINI.md](../../GUIDELINE_MINI.md) để phân định: xe thân liền khối unibody trần cao dạng hộp chuyển về đúng `van (3)`, xe bán tải (pickup) chuyển về `car (0)`. Việc sửa lỗi này đã chuyển hóa trực tiếp hàng chục ca từ FP/FN thành True Positive (TP).
+  2. **Lỗi False Positives (FP):** Ban đầu có 366 FP chủ yếu do pre-annotation tự động vẽ box các xe quá nhỏ ở đường chân trời ($< 15\text{px}$) và các vệt phản xạ ánh sáng đèn trên mặt đường ướt (đặc biệt ở các ảnh ban đêm như `drive_001`, `drive_002`, `drive_018`, `drive_049`). Quá trình rework đã rà soát và loại bỏ các box nhiễu vi phạm quy tắc ngưỡng kích thước và loại trừ bóng phản xạ, giảm FP từ 366 xuống còn 83.
+  3. **Lỗi False Negatives (FN):** Bổ sung các xe đỗ ven đường trong bóng tối hoặc bị che khuất một phần (như ở `drive_005`, `drive_011`, `drive_019`, `drive_026`, `drive_041`), giảm FN từ 264 xuống còn 90.
+- Kết quả sau sửa: Đạt $F1 = 0.8668$ (vượt chuẩn yêu cầu $\ge 0.80$) và $\text{mean IoU} = 0.8733$ ($\ge 0.70$), chính thức đạt cổng `passed: true`.
 
 ## 5. Kết quả YOLO
 
